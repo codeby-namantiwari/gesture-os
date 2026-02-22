@@ -67,27 +67,10 @@ export default function Home() {
         {/* Gesture Panels */}
         <div className="flex flex-col gap-4 flex-1 w-full">
 
-          {/* Left Hand */}
+          {/* Left Hand — shows rightHand data because of mirror flip */}
           <div className="bg-gray-900 rounded-2xl p-5 border border-purple-800">
             <p className="text-purple-400 text-xs uppercase tracking-widest mb-2">
               🟣 Left Hand
-            </p>
-            <p className="text-2xl font-bold text-white">
-              {leftHand.gesture !== "none"
-                ? gestureEmoji[leftHand.gesture]
-                : <span className="text-gray-600">No hand detected</span>}
-            </p>
-            {leftHand.gesture !== "none" && (
-              <p className="text-gray-500 text-xs mt-2">
-                X: {Math.round(leftHand.cursorX)}px | Y: {Math.round(leftHand.cursorY)}px
-              </p>
-            )}
-          </div>
-
-          {/* Right Hand */}
-          <div className="bg-gray-900 rounded-2xl p-5 border border-cyan-800">
-            <p className="text-cyan-400 text-xs uppercase tracking-widest mb-2">
-              🔵 Right Hand
             </p>
             <p className="text-2xl font-bold text-white">
               {rightHand.gesture !== "none"
@@ -97,6 +80,23 @@ export default function Home() {
             {rightHand.gesture !== "none" && (
               <p className="text-gray-500 text-xs mt-2">
                 X: {Math.round(rightHand.cursorX)}px | Y: {Math.round(rightHand.cursorY)}px
+              </p>
+            )}
+          </div>
+
+          {/* Right Hand — shows leftHand data because of mirror flip */}
+          <div className="bg-gray-900 rounded-2xl p-5 border border-cyan-800">
+            <p className="text-cyan-400 text-xs uppercase tracking-widest mb-2">
+              🔵 Right Hand
+            </p>
+            <p className="text-2xl font-bold text-white">
+              {leftHand.gesture !== "none"
+                ? gestureEmoji[leftHand.gesture]
+                : <span className="text-gray-600">No hand detected</span>}
+            </p>
+            {leftHand.gesture !== "none" && (
+              <p className="text-gray-500 text-xs mt-2">
+                X: {Math.round(leftHand.cursorX)}px | Y: {Math.round(leftHand.cursorY)}px
               </p>
             )}
           </div>
@@ -123,6 +123,7 @@ export default function Home() {
                 ))}
             </div>
           </div>
+
         </div>
       </div>
     </main>

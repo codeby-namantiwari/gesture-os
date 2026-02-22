@@ -34,10 +34,17 @@ const HAND_CONNECTIONS = [
   [5,9],[9,13],[13,17],
 ];
 
-// Purple for first hand, Cyan for second hand
-const HAND_COLORS = ["#a855f7", "#06b6d4"];
+// Purple = Left Hand, Cyan = Right Hand
+const HAND_COLORS: Record<string, string> = {
+  left: "#a855f7",
+  right: "#06b6d4",
+};
 
-function detectGesture(landmarks: any[]): { gesture: GestureType; x: number; y: number } {
+function detectGesture(landmarks: any[]): {
+  gesture: GestureType;
+  x: number;
+  y: number;
+} {
   const thumbTip = landmarks[4];
   const indexTip = landmarks[8];
   const middleTip = landmarks[12];
@@ -78,18 +85,20 @@ function drawLandmarks(
   if (!ctx) return;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   if (!result.landmarks || result.landmarks.length === 0) return;
 
   const w = canvas.width;
   const h = canvas.height;
 
   result.landmarks.forEach((hand, handIndex) => {
-    // Hand 0 = Purple, Hand 1 = Cyan
-    const color = HAND_COLORS[handIndex] ?? "#ffffff";
-    const label = handIndex === 0 ? "Left" : "Right";
+    // Get the real hand side using categoryName
+    const categoryName = result.handednesses[handIndex]?.[0]?.categoryName;
+    // Camera sees mirrored: camera "Left" = user's Right, flip it
+    const userSide = categoryName === "Left" ? "right" : "left";
+    const color = HAND_COLORS[userSide] ?? "#ffffff";
+    const label = userSide === "left" ? "Left" : "Right";
 
-    // Draw connections
+    // Draw connection lines
     ctx.shadowBlur = 0;
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
@@ -132,13 +141,18 @@ function drawLandmarks(
       if (isWrist) {
         ctx.font = "bold 14px sans-serif";
         ctx.fillStyle = color;
+        ctx.shadowBlur = 0;
         ctx.fillText(label, x + 10, y - 10);
       }
     }
   });
 }
 
-const defaultHand: HandGesture = { gesture: "none", cursorX: 0, cursorY: 0 };
+const defaultHand: HandGesture = {
+  gesture: "none",
+  cursorX: 0,
+  cursorY: 0,
+};
 
 export function useGestureDetection() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -211,26 +225,26 @@ export function useGestureDetection() {
       try {
         const result = handLandmarker.detectForVideo(video, performance.now());
 
-        // Draw both hands on canvas
         if (canvasRef.current) {
           drawLandmarks(canvasRef.current, result);
         }
 
-        // Detect gesture for each hand separately
         let leftHand: HandGesture = defaultHand;
         let rightHand: HandGesture = defaultHand;
 
         result.landmarks.forEach((landmarks, i) => {
-          const handedness = result.handednesses[i]?.[0]?.displayName;
+          // Use categoryName for reliable detection regardless of order
+          const categoryName = result.handednesses[i]?.[0]?.categoryName;
           const { gesture, x, y } = detectGesture(landmarks);
           const data: HandGesture = {
             gesture,
             cursorX: x * window.innerWidth,
             cursorY: y * window.innerHeight,
           };
-          // MediaPipe labels are from camera POV so we flip them
-          if (handedness === "Left") rightHand = data;
-          else leftHand = data;
+
+          // Camera is mirrored: camera "Left" = your Right hand
+          if (categoryName === "Left") rightHand = data;
+          else if (categoryName === "Right") leftHand = data;
         });
 
         setState({ leftHand, rightHand, isReady: true });
