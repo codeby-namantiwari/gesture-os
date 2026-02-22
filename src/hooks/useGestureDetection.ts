@@ -11,6 +11,7 @@ export type GestureType =
   | "pointing"
   | "pinch"
   | "peace"
+  | "gun"
   | "none";
 
 export interface HandGesture {
@@ -34,7 +35,6 @@ const HAND_CONNECTIONS = [
   [5,9],[9,13],[13,17],
 ];
 
-// Purple = Left Hand, Cyan = Right Hand
 const HAND_COLORS: Record<string, string> = {
   left: "#a855f7",
   right: "#06b6d4",
@@ -46,6 +46,7 @@ function detectGesture(landmarks: any[]): {
   y: number;
 } {
   const thumbTip = landmarks[4];
+  const thumbIP = landmarks[3];
   const indexTip = landmarks[8];
   const middleTip = landmarks[12];
   const ringTip = landmarks[16];
@@ -62,11 +63,16 @@ function detectGesture(landmarks: any[]): {
   const middleUp = middleTip.y < middleMCP.y;
   const ringUp = ringTip.y < ringMCP.y;
   const pinkyUp = pinkyTip.y < pinkyMCP.y;
+  const thumbOut = thumbTip.x < thumbIP.x;
 
   const pinchDist = Math.hypot(
     thumbTip.x - indexTip.x,
     thumbTip.y - indexTip.y
   );
+
+  // Gun: index up + thumb out, rest closed
+  if (indexUp && thumbOut && !middleUp && !ringUp && !pinkyUp)
+    return { gesture: "gun", x, y };
 
   if (pinchDist < 0.05) return { gesture: "pinch", x, y };
   if (indexUp && middleUp && !ringUp && !pinkyUp) return { gesture: "peace", x, y };
@@ -91,14 +97,11 @@ function drawLandmarks(
   const h = canvas.height;
 
   result.landmarks.forEach((hand, handIndex) => {
-    // Get the real hand side using categoryName
     const categoryName = result.handednesses[handIndex]?.[0]?.categoryName;
-    // Camera sees mirrored: camera "Left" = user's Right, flip it
     const userSide = categoryName === "Left" ? "right" : "left";
     const color = HAND_COLORS[userSide] ?? "#ffffff";
     const label = userSide === "left" ? "Left" : "Right";
 
-    // Draw connection lines
     ctx.shadowBlur = 0;
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
@@ -110,34 +113,29 @@ function drawLandmarks(
       const ay = hand[a].y * h;
       const bx = (1 - hand[b].x) * w;
       const by = hand[b].y * h;
-
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.lineTo(bx, by);
       ctx.stroke();
     }
 
-    // Draw landmark dots
     for (let i = 0; i < hand.length; i++) {
       const x = (1 - hand[i].x) * w;
       const y = hand[i].y * h;
       const isIndexTip = i === 8;
       const isWrist = i === 0;
 
-      // Colored outer circle
       ctx.beginPath();
       ctx.arc(x, y, isIndexTip ? 9 : 5, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.shadowBlur = 0;
       ctx.fill();
 
-      // White inner dot
       ctx.beginPath();
       ctx.arc(x, y, isIndexTip ? 5 : 2.5, 0, Math.PI * 2);
       ctx.fillStyle = "#ffffff";
       ctx.fill();
 
-      // Label at wrist
       if (isWrist) {
         ctx.font = "bold 14px sans-serif";
         ctx.fillStyle = color;
@@ -233,7 +231,6 @@ export function useGestureDetection() {
         let rightHand: HandGesture = defaultHand;
 
         result.landmarks.forEach((landmarks, i) => {
-          // Use categoryName for reliable detection regardless of order
           const categoryName = result.handednesses[i]?.[0]?.categoryName;
           const { gesture, x, y } = detectGesture(landmarks);
           const data: HandGesture = {
@@ -241,8 +238,6 @@ export function useGestureDetection() {
             cursorX: x * window.innerWidth,
             cursorY: y * window.innerHeight,
           };
-
-          // Camera is mirrored: camera "Left" = your Right hand
           if (categoryName === "Left") rightHand = data;
           else if (categoryName === "Right") leftHand = data;
         });
